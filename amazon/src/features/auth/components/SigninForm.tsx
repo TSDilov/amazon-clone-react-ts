@@ -1,13 +1,42 @@
 import { Box, Grid, TextField, InputLabel, Typography, Button, Divider } from "@mui/material";
 import { FC, FormEvent } from "react";
 import { Link } from "react-router-dom";
+import useInput from "../../../hooks/use-input";
+import { validateEmail } from "../../../shared/utils/validation/email";
+import { validatePasswordLength } from "../../../shared/utils/validation/length";
 
 const SigninForm: FC = () => {
+    const {
+        text: email,
+        shouldReturnError: emailHasError,
+        textChangeHandler: emailChangeHandler,
+        inputBlurHandler: emailBlurHandler,
+        clearHandler: emailClearHandler,
+    } = useInput(validateEmail);
+
+    const {
+        text: password,
+        shouldReturnError: passwordHasError,
+        textChangeHandler: passwordChangeHandler,
+        inputBlurHandler: passwordBlurHandler,
+        clearHandler: passwordClearHandler,
+    } = useInput(validatePasswordLength);
+
+    const clearForm = () => {
+        emailClearHandler();
+        passwordClearHandler();
+    };
 
     const onSubmitHandler = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        console.log('Clicked');
+        if (emailHasError || passwordHasError) return;
+
+        if (email.length === 0 || password.length === 0) return;
+
+        console.log('USER: ', email, password);
+
+        clearForm();
     }
 
     return (
@@ -36,7 +65,12 @@ const SigninForm: FC = () => {
                             htmlFor='email'
                         >Your email</InputLabel>
                         <TextField
-                            type='text'
+                            value={email}
+                            onChange={emailChangeHandler}
+                            onBlur={emailBlurHandler}
+                            error={emailHasError}
+                            helperText={emailHasError ? 'Enter your email' : ''}
+                            type='email'
                             name='email'
                             id='email'
                             variant='outlined'
@@ -48,7 +82,14 @@ const SigninForm: FC = () => {
                             htmlFor='password'
                         >Your password</InputLabel>
                         <TextField
-                            type='text'
+                            value={password}
+                            onChange={passwordChangeHandler}
+                            onBlur={passwordBlurHandler}
+                            error={passwordHasError}
+                            helperText={
+                                passwordHasError ? 'Minimum 6 characters required' : ''
+                            }
+                            type='password'
                             name='password'
                             id='password'
                             variant='outlined'
