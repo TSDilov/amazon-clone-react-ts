@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { ExistingUserDTO } from 'src/user/dtos/existing-user.dto';
@@ -12,18 +12,18 @@ export class AuthService {
     constructor(
         private userService: UserService,
         private jwtService: JwtService
-    ) {}
+    ) { }
 
     async hashPassword(password: string): Promise<string> {
         return bcrypt.hash(password, 12);
     }
 
-    async register(user: Readonly<NewUserDTO>):Promise<UserDetails | any> {
+    async register(user: Readonly<NewUserDTO>): Promise<UserDetails | any> {
         const { name, email, password } = user;
 
         const existingUser = await this.userService.findByEmail(email);
 
-        if (existingUser) return 'User with this email already exist!';
+        if (existingUser) throw new HttpException('An account with that email already exists!', HttpStatus.CONFLICT);
 
         const hashedPassword = await this.hashPassword(password);
         const newUser = await this.userService.createUser(name, email, hashedPassword);
@@ -35,22 +35,31 @@ export class AuthService {
     }
 
     async validateUser(email: string, password: string): Promise<UserDetails | null> {
-        const user =  await this.userService.findByEmail(email);
+        const user = await this.userService.findByEmail(email);
         const isExist = !!user;
         if (!isExist) return null;
 
         const isPasswordMatch = await this.passwordMatch(password, user.password);
-        if(!isPasswordMatch) return null;
+        if (!isPasswordMatch) return null;
 
         return this.userService._getUserDetails(user);
     }
 
-    async login(currentUser: ExistingUserDTO): Promise<{token: string} | null> {
+    async login(currentUser: ExistingUserDTO): Promise<{ token: string } | null> {
         const { email, password } = currentUser;
-        const user = this.validateUser(email, password);
-        if (!user) return null;
+        const user = await this.validateUser(email, password);
+        if (!user) throw new HttpException('Credentials invalid!', HttpStatus.UNAUTHORIZED);
 
         const jwtToken = await this.jwtService.signAsync({ user });
         return { token: jwtToken };
+    }
+
+    async verifyJwt(jwt: string): Promise<{ exp: number }> {
+        try {
+            const { exp } = await this.jwtService.verifyAsync(jwt);
+            return { exp };
+        } catch (error) {
+            throw new HttpException('Invalid JWT', HttpStatus.UNAUTHORIZED);
+        }
     }
 }
