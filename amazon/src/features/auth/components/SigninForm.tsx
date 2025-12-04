@@ -121,6 +121,10 @@ const SigninForm: FC = () => {
                         />
 
                         <Button
+                            disabled={
+                                !validateEmail(email) ||
+                                !validatePasswordLength(password)
+                            }
                             variant='contained'
                             type='submit'
                             style={{
